@@ -1,5 +1,9 @@
 # Pipelines Part 2 - Pipes and Writers
 
+**NEEDS WORK** - this text was migrated from a proposed blog article and needs restructuring to be suitable as a docs item, and updating to the current API
+
+---
+
 In part 1 we had a look at what problems attempt to solve and introduced the "memory pool". So now let's see what we can do with it by introducing the "pipe" and comparing it to the familiar `Stream`. Before we can do that we need to define some configuration options (`PipeOptions`) - the most important of which is : the `MemoryPool`:
 
 ```

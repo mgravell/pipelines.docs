@@ -1,5 +1,9 @@
 # Pipelines Part 1 - High Level Overview, and Memory Pools
 
+**NEEDS WORK** - this text was migrated from a proposed blog article and needs restructuring to be suitable as a docs item, and updating to the current API
+
+---
+
 "Pipelines" is the eagerly anticiapted IO stack working it's way through [corefxlab](https://github.com/dotnet/corefxlab); it is what was once called "channels", which I [wrote about previously](http://blog.marcgravell.com/2016/09/channelling-my-inner-geek.html). I'm going to take a few blog posts to walk through what this stack *means*, why you might want to use it, and *how* to use it.
 
 ## Disclaimer : I'm not on the inside here
