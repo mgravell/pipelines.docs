@@ -1,37 +1,29 @@
-## Welcome to GitHub Pages
+## pipelines.docs
 
-You can use the [editor on GitHub](https://github.com/mgravell/pipelines.docs/edit/master/README.md) to maintain and preview the content for your website in Markdown files.
+This repository is intended as a user-contributed documentation repository for the .NET "pipelines" work, currently in progress. If you have additions or changes: PR me!
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+# What do you need to play with pipelines?
 
-### Markdown
+You will need:
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+- an up to date *preview* runtime and compiler - [nightly is here](https://github.com/dotnet/cli)
+- the *preview* myget feeds:
 
-```markdown
-Syntax highlighted code block
+        <add key="dotnet-core" value="https://dotnet.myget.org/F/dotnet-core/api/v3/index.json" protocolVersion="3" />
+        <add key="corefxlab" value="https://dotnet.myget.org/F/dotnet-corefxlab/api/v3/index.json" protocolVersion="3" />
 
-# Header 1
-## Header 2
-### Header 3
+- *for your convenience only*, version tags in your project file (so you can update everything in one go); for example (these numbers change often):
 
-- Bulleted
-- List
+         <FrameworkTargetVer>4.5.0-preview1-26108-02</FrameworkTargetVer>
+         <CoreFxLabVersion>0.1.0-e180108-4</CoreFxLabVersion>
 
-1. Numbered
-2. List
+- preview package references from corefxlab:
 
-**Bold** and _Italic_ and `Code` text
+        <PackageReference Include="System.IO.Pipelines" Version="$(CoreFxLabVersion)" />
+        <PackageReference Include="System.Buffers.Primitives" Version="$(CoreFxLabVersion)" />
+        
+- preview package references from dotnet-core:
 
-[Link](url) and ![Image](src)
-```
-
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
-
-### Jekyll Themes
-
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/mgravell/pipelines.docs/settings). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
-
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://help.github.com/categories/github-pages-basics/) or [contact support](https://github.com/contact) and we’ll help you sort it out.
+        <PackageReference Include="System.Memory" Version="$(FrameworkTargetVer)" />
+        <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="$(FrameworkTargetVer)" />
+        <PackageReference Include="System.Threading.Tasks.Extensions" Version="$(FrameworkTargetVer)" />
