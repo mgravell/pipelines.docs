@@ -2,7 +2,12 @@
 
 This repository is intended as a user-contributed documentation repository for the .NET "pipelines" work, currently in progress. If you have additions or changes: PR me!
 
+High level index (in recommended reading order)
+
 - [Getting started](GettingStarted)
+- [The Memory Pool](MemoryPool)
+- [Writing to a Pipe](Writing)
+- [Reading from a Pipe](Reading)
 
 ## What are pipelines?
 
