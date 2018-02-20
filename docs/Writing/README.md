@@ -42,7 +42,7 @@ The first thing we probably want to try is writing data to a pipe. Now, a lazy b
 
 you might reasonably wonder why this is "bad". Compare back to the list of objectives behind pipelines from part 1, and we've violated two of them:
 
-- we've allocated a trainsient `byte[]` that holds our data
+- we've allocated a transient `byte[]` that holds our data
 - we've forced it to copy the data from transient buffer to the *actual* buffer that we want to use (the one from the memory pool)
 
 You'd think that writing an arbitrary `string` to an output was a simple enough thing, but it actually requires a surprising number of concepts. So: rather than dive in at the deep end, let's go back a few levels and just write a few bytes (maybe 0x10, 0x20, 0x30 - why not?) to the pipe without a helper method:
@@ -55,7 +55,7 @@ A `WritableBuffer` represents the state of an in-progress attempt to write, and 
 
 Usually, we will be writing lots of things at the same time, so by specifying the number of bytes we want to write, the pipe can check whether there is enough space for the 3 bytes at the end of the *current* block on the pipe, and if so it can allow us to keep appending there; if there were only 2 bytes left (or no active block at all), it can consider the previous block as "done", request a new block from the memory pool, and make the fresh block available to us.
 
-An alternative approach is to just use `writer.Alloc()` *without* specifying an amount to ensure; in that case, it is the consumer's job to check how much space is available in the `WritableBuffer`, and only write that much - then request a new one. This is especially important when handling larger quantities of data, an *in particular* when the amount of data that we want to write might be larger than the block size of the memory pool, since `writer.Alloc(hugeSize)` is likely to fail.
+An alternative approach is to just use `writer.Alloc()` *without* specifying an amount to ensure; in that case, it is the consumer's job to check how much space is available in the `WritableBuffer`, and only write that much - then request a new one. This is especially important when handling larger quantities of data, and *in particular* when the amount of data that we want to write might be larger than the block size of the memory pool, since `writer.Alloc(hugeSize)` is likely to fail.
 
 Once we have the `WritableBuffer`, we need to write to it. It provides a property that provides the *unused space in the active block*:
 
@@ -122,13 +122,13 @@ writer.Commit();
 
 This feels *so much cleaner*.
 
-I strongly suggest that this should be the case for `IOutput` too; the `Enlarge` and `GetSpan()` should proably be merged in the same way.
+I strongly suggest that this should be the case for `IOutput` too; the `Enlarge` and `GetSpan()` should probably be merged in the same way.
 
 (end of Marc suggests)
 
 ---
 
-Note that calling `Commit()` *does not* guarantee that the data actually goes to the reader; the `Pipe` will assume that we're probably about to add more to the last block. To ensure that it is made availab, we use `FlushAsync()`. This method is available on the `WritableBuffer`:
+Note that calling `Commit()` *does not* guarantee that the data actually goes to the reader; the `Pipe` will assume that we're probably about to add more to the last block. To ensure that it is made available, we use `FlushAsync()`. This method is available on the `WritableBuffer`:
 
     await wb.FlushAsync();
 
@@ -180,7 +180,7 @@ That was quite the marathon to just write a string, but it highlights a lot of t
 
 - utf-8 involves multi-byte characters, so we shouldn't assume that `value.Length` bytes are sufficient
 - for very large strings, even if they only contain characters in the ASCII range, we might need to use multiple blocks and encode in chunks; this means calling `Enlarge()` and `Advance()` once per loop iteration
-- we can *optimize* by asking: is there enough space *assuming every character takes the maxiumum possible width*
+- we can *optimize* by asking: is there enough space *assuming every character takes the maximum possible width*
 to fit in a single block - if so: use a fast path
 - for short strings, even if the *worst case* doesn't fit, it might make sense to *calculate* the actual length to see whether it will *actually* fit in the available space, and if so: use a fast path
 - in the multi-block case we need to think about whether the last character at the end of one block might span two blocks; do we only write entire characters, or do we track the intermediate state?
