@@ -4,7 +4,7 @@
 
 ---
 
-In part 1 we introduced the general aims of pipelines and discussed the abstrat `MemoryPool<byte>` (and the default `MemoryPool` implementation of that). In part 2 we looked at how to create a `Pipe`, and how to write data into the pipe via the `IPipeWriter` API. In this part, we're going to look at how to *consume* data from a pipe.
+In part 1 we introduced the general aims of pipelines and discussed the abstract `MemoryPool<byte>` (and the default `MemoryPool` implementation of that). In part 2 we looked at how to create a `Pipe`, and how to write data into the pipe via the `IPipeWriter` API. In this part, we're going to look at how to *consume* data from a pipe.
 
 A `Pipe` exposes an `IPipeReader` in virtually the same way that it exposes the `IPipeWriter` that we looked at previously; just like before, we have two identical options:
 
@@ -26,18 +26,18 @@ while (true)
 
 This shows us looping over the input (asynchronously as data becomes available), and obtaining the `ReadResult` and `ReadOnlyBuffer` each time. The `ReadResult` describes the state of the read operation (including telling us whether the writer has been completed, i.e. is there ever going to be any more data?); the `ReadOnlyBuffer` allows us to talk about **multiple chunks** (typically multiple blocks from the memory pool) of data at a single time.
 
-A huge difference between a `Pipe` and a `Stream` is that when you `Read` from a `Stream`, you have consumed the data: it is now your responsibility, your problem. This is massively inconvenient in many cases - especially with "framed" data protocols. When reading from a `Stream` you a very rarely lucky enough to end up reading **exactly** on logical "frame" of data. Usually you end up reading half of a frame, or 2 entire frames and half of the next frame. And now you need to do something with the data that isn't yet usable, either because you don't have enough to do anything *at all*, or because you managed to do something but still had some data left over. This is the "back buffer" problem that I mentioned in part 1.
+A huge difference between a `Pipe` and a `Stream` is that when you `Read` from a `Stream`, you have consumed the data: it is now your responsibility, your problem. This is massively inconvenient in many cases - especially with "framed" data protocols. When reading from a `Stream` you a very rarely lucky enough to end up reading **exactly** one logical "frame" of data. Usually you end up reading half of a frame, or 2 entire frames and half of the next frame. And now you need to do something with the data that isn't yet usable, either because you don't have enough to do anything *at all*, or because you managed to do something but still had some data left over. This is the "back buffer" problem that I mentioned in part 1.
 
 Pipelines solves this by having `ReadAsync` allow you to look at the data *without* considering it "consumed". Instead, you have the opportunity to look at the data, and then *tell the pipe* how much of it you were able to use. That might mean none of it (because you don't have an entire frame), or it might mean all of it, or it might mean some of it. Data we mark as consumed is released back to the memory pool for re-use. Data we *don't* consume will be retained by the pipe, and *given to us again next time*. Additionally, you can not only tell it how much you *consumed*, but you can also tell it how much you *looked at*:
 
 - if you *didn't look at* all the data, then when you next `ReadAsync`, it can immediately return control to you, for you to have another look at the data you didn't *actively consume*
-- if you *did* look at all the data, it knows that there isn't much point in waking you up again until more data becommes available
+- if you *did* look at all the data, it knows that there isn't much point in waking you up again until more data becomes available
 - if it can see that you're not looking at all the data but also not consuming anything, then it can interrupt you to prevent you looping forever without advancing
 - if it can see that you looked at all the data and the writer is completed (no more data will ever arrive), it can determine that you've got as far as you ever will
 
 We achieve this via the `Advance()` method on the reader; we *must* tell it what we consumed, and we can *optionally* tell it what we looked at.
 
-As a very simple example, we might choose to buffer everything before processing it (note: I'm not suggesting this is a good thinig to do) - essentially `ReadToEnd()`. To do that, we can use:
+As a very simple example, we might choose to buffer everything before processing it (note: I'm not suggesting this is a good thing to do) - essentially `ReadToEnd()`. To do that, we can use:
 
 ```
 while (true)
@@ -58,7 +58,7 @@ while (true)
 
 The `buffer.Start` and `buffer.End` properties are `Position` values - essentially cursors in a sequence of blocks. We can use those `Position` values in our call to `Advance` - the first parameter (`buffer.Start`) tells it "we didn't consume anything past the start"; the second parameter (`buffer.End`) tells it "assume we've looked at it all - don't nudge me again until either more data arrives or the writer is completed".
 
-So; once everything is completed, what can we do? `ReadOnlyBuffer` looks and feels a lot like `Memory<byte>` did. It has a `.Length`, and we can "slice" it to create sub-regions (which as also `ReadOnlyBuffer`). The naming is interesting: *read only*. As we explore this API, we'll see that where we had `Memory<T>` and `Span<T>`, we now have `ReadOnlyMemory<T>` and `ReadOnlySpan<T>`. You won't be amazed to hear that this lacks the `set` indexer; this no longer works:
+So; once everything is completed, what can we do? `ReadOnlyBuffer` looks and feels a lot like `Memory<byte>` did. It has a `.Length`, and we can "slice" it to create sub-regions (which is also `ReadOnlyBuffer`). The naming is interesting: *read only*. As we explore this API, we'll see that where we had `Memory<T>` and `Span<T>`, we now have `ReadOnlyMemory<T>` and `ReadOnlySpan<T>`. You won't be amazed to hear that this lacks the `set` indexer; this no longer works:
 
     span[0] = 0x10; // nope!
 
@@ -178,11 +178,11 @@ while (running)
 
 We *could* do this by using various methods on the `ReadOnlyBuffer`, including `Slice()` - and like we saw with our previous example: either accessing the `.First` range, or using `foreach` to iterate over the ranges. But this is *not* usually a good approach when processing small amounts of data from `ReadOnlyBuffer`; all of the slice work, the position work, and accessing spans from memories: is *relatively* expensive. And also really quite inconvenient. We can make it more efficient *and* easier to use ***at the same time*** by making use of  `BufferReader` (`BufferReader<ReadOnlyBuffer>` now - TBC).
 
-A `BufferReader` is a `ref struct` - so stack-only; it *directly* holds the current `ReadOnlySpan<T>` as a field (something that only a `ref struct` can do), avoiding the "span fetch" cost associted with repeatedly accessing `ReadOnlyMemory<T>`. It also avoids constantly slicing through the span, instead advising the consumer how to track the intended index in a span that *doesn't change* until it needs to switch to the next block.
+A `BufferReader` is a `ref struct` - so stack-only; it *directly* holds the current `ReadOnlySpan<T>` as a field (something that only a `ref struct` can do), avoiding the "span fetch" cost associated with repeatedly accessing `ReadOnlyMemory<T>`. It also avoids constantly slicing through the span, instead advising the consumer how to track the intended index in a span that *doesn't change* until it needs to switch to the next block.
 
 The main ways of fetching data from a `BufferReader` are:
 
-- `Take()` consumes a single byte in one go (much like `Stream.ReadByte()`), returing a negative number if we have exhausted the data
+- `Take()` consumes a single byte in one go (much like `Stream.ReadByte()`), returning a negative number if we have exhausted the data
 - `.Span` and `.Index` provide access to the current block - you should start looking *at `.Index`, not at zero
 - `.Skip(...)` moves forwards through the reader, which *might* mean changing `.Index` and staying in the same span (`.Span`), or it *might* mean moving to the *next* span and resetting the index
 - finally, `ConsumedBytes` tells us how far we have read in total - it is essentially the sum of all the skips
